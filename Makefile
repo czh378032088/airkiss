@@ -1,30 +1,14 @@
-
-COBJS += main.o wireless.o
-
-#CFLAGS += -O2 -Wall -DDEBUG
-CFLAGS	+= -I./ -I./inc
-
-LDFLAGS	+=
-LIBPATH  = -L./airkisslib
-LIBVAR   = -lairkiss_aes -lairkiss_aes_log
-CROSS_COMPILE	?=
-
-CC = $(CROSS_COMPILE)g++
-
-TARGET = airkissTest
-
-all:$(TARGET)
+#if compile x86 demo on unbuntu 64.
+CC:= /opt/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.16/bin/mipsel-openwrt-linux-gcc
+export STAGING_DIR:=/staging_dir
 
 
-$(TARGET):$(COBJS)
-	$(CC) -o $@ $^ $(LDFLAGS) $(LIBPATH) $(LIBVAR)
- 
-%.o:%.cpp
-#g++ $(CFLAGS) -c main.c $(LDFLAGS)
-#g++ $(CFLAGS) -o ./libairkiss.a ./libairkiss_aes.a ./libairkiss_aes_log.a ./libairkiss_log.a
-	$(CC) $(CFLAGS) -c $^ $(LDFLAGS) 
+all: app0
+	@echo build complete
 
-.PHONY:clean
+
 clean:
-	rm -f $(COBJS)
-	rm -f $(TARGET)
+	-rm airkiss
+
+app0:airkiss.c
+	$(CC) airkiss.c -o airkiss -O0 -g3 -I"./include" -L"./lib" -lairkiss_log -lpthread -ldl -lstdc++ -lm -lrt
