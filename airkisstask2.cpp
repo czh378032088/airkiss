@@ -21,7 +21,6 @@
 
 #include"airkisstask.h"
 #include "gpio.h"
-#include "wireless.h"
 
 
 #define GetClockMs()   (clock() * 1000 / CLOCKS_PER_SEC)
@@ -178,57 +177,56 @@ bool AirkissTask::GetEnterConfigEvent(void)
 }
 
 void AirkissTask::RunConfigWifi(airkiss_context_t* context, const airkiss_config_t* config)
-{ 
+{
+   struct ifreq ifr;
+   struct sockaddr_ll sll;  
    char data[2048];
    airkiss_result_t ak_result;
-   struct iw_range range;
-   int ret;
 
-   WirelessCtl wirelessCtrl("wlan0");
+   system("ifconfig wlan0 down");
+   usleep(1000);
+   system("iwconfig wlan0 mode monitor");
+   usleep(1000);
+   system("ifconfig wlan0 up");
        
-   ret = wirelessCtrl.Open();
-   if(ret != 0)
+   int socket_id = socket(PF_PACKET, SOCK_RAW, htons (ETH_P_ALL));
+   if(socket_id < 0)
    {
-      printf("wireless open failed:%d \n",ret);
-      return;
+	    printf("error::Open socket error!\n");
+		return ;
    }
-   
-   ret = wirelessCtrl.SetMode(MONITOR_MODE);
-   if(ret != 0)
-   {
-      printf("wireless SetMode failed:%d \n",ret);
-      return;
-   }
+  /// printf("1\n");
+   int caplen = 65535;
+   setsockopt(socket_id,SOL_SOCKET,SO_RCVBUF, &caplen, sizeof(caplen));
     
-   ret = wirelessCtrl.GetRangeInfo(&range);
-   if(ret != 0)
-   {
-      printf("wireless get range info failed:%d \n",ret);
-      return;
-   }
-   clock_t nowTime = 0;
+  // printf("2\n");
+   strcpy (ifr.ifr_name, "wlan0");  
+   ioctl(socket_id, SIOCGIFINDEX, &ifr) ;
+        
+   // printf("3\n");
+   
+   memset( &sll, 0, sizeof(sll) );  
+   sll.sll_family = AF_PACKET;  
+   sll.sll_ifindex = ifr.ifr_ifindex;  
+   sll.sll_protocol = htons(ETH_P_ALL); 
+   bind(socket_id, (struct sockaddr *)&sll, sizeof(sll));
 
-   bool lock = false;
-   int channelIndex = range.num_frequency;
+   usleep(1000);
+  // printf("4\n");
 
+   clock_t nowTime = GetClockMs();
+   ChangeChannel(context,config);
+    //printf("5\n");
+   int lock = 0;
    while(runFlag)
    {
     if(GetClockMs() - nowTime >= 200 && lock == 0)
     {
         nowTime = GetClockMs(); 
-        channelIndex ++;
-        if(channelIndex >= range.num_frequency)
-           channelIndex = 0;
-       ret = wirelessCtrl.SetFreq(range.freq + channelIndex,1);
-       if(ret != 0)
-       {
-          printf("wireless set freq failed:%d \n",ret);
-          return;
-       } 
-       airkiss_change_channel(context)  ;
+        ChangeChannel(context,config);
     }
     //printf("6\n");
-	int ret = wirelessCtrl.GetData(data, 2048);
+	int ret = recv(socket_id, data, 2048, MSG_DONTWAIT);
 	if(ret <= 64)
 	{
         //printf("nodata\n");
@@ -264,12 +262,19 @@ void AirkissTask::RunConfigWifi(airkiss_context_t* context, const airkiss_config
 	   }
 	 }
    }
+    close(socket_id);
 
+	system("ifconfig wlan0 down");
+    printf("ifconfig wlan0 down\n");
+	usleep(1000);
+	system("iwconfig wlan0 mode managed");
+    printf("iwconfig wlan0 mode managed\n");
+	usleep(1000);
     if(runFlag) 
         WriteConfigfile(ak_result.ssid,ak_result.pwd); 
         
-	wirelessCtrl.SetMode(MANAGED_MODE);
-    wirelessCtrl.Close();
+	system("ifconfig wlan0 up");
+    printf("ifconfig wlan0 up\n");
     usleep(1000);
         
     system("wifi reload");   
@@ -279,7 +284,9 @@ void AirkissTask::RunConfigWifi(airkiss_context_t* context, const airkiss_config
    {
       SetUdpBroadcast(ak_result.random);
       UdpBroadcast();
-   } 
+   }
+  
+  
 }
 
 int AirkissTask::WriteConfigfile(const char *ssid,const char *pwr)
@@ -312,7 +319,7 @@ int AirkissTask::WriteConfigfile(const char *ssid,const char *pwr)
 */
    return 0;
 }
-/*
+
  void  AirkissTask::ChangeChannel(airkiss_context_t* context, const airkiss_config_t* config)
  {
     static int cur_channel = 0;
@@ -327,7 +334,7 @@ int AirkissTask::WriteConfigfile(const char *ssid,const char *pwr)
 	system(cmd);
 	airkiss_change_channel(context);
  }
-*/
+
 void AirkissTask::SetUdpBroadcast(unsigned char random,int dis,int times)
 {
    this->sendRandom = random;
