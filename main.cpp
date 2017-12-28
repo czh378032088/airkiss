@@ -31,18 +31,18 @@ int main(int argc, char* argv[])
 {
 
     AirkissTask* airkissTsk = AirkissTask::RunAirkissTask();
-    DeviceCtrl *deviceCtrl = DeviceCtrl::RunDeviceTask();
+    //DeviceCtrl *deviceCtrl = DeviceCtrl::RunDeviceTask();
     while(1)
     {
         char ch = getchar();
         if(ch == 'q')
         {  
-            deviceCtrl->EndThread();
+            //deviceCtrl->EndThread();
             airkissTsk->EndThread();
-            deviceCtrl->WaitThreadEnd();
+            //deviceCtrl->WaitThreadEnd();
             airkissTsk->WaitThreadEnd();
             delete airkissTsk;
-            delete deviceCtrl;
+            //delete deviceCtrl;
             break;
         }
     }

@@ -86,7 +86,7 @@ void AirkissTask::RunTask(void)
    config.printf = &printf;
 
    airkiss_init(&akcontext, &config);
-  
+  /*
   int sockfd = socket(AF_INET, SOCK_DGRAM, 0);  
   if (sockfd == -1)  
   {  
@@ -111,17 +111,17 @@ void AirkissTask::RunTask(void)
   int sockfdSend = socket(AF_INET, SOCK_DGRAM, 0);
   char appid[] = "gh_1683dbbff1fc";
   char devid[] = "gh_1683dbbff1fc_4b58275c2b2572e8";//"gh_1683dbbff1fc_865663e3df14ab23";
-  
+  */
   //SetUdpBroadcast(87);
 
-   while(runFlag)
+  // while(runFlag)
    {
       if(GetEnterConfigEvent())
       {
          printf("Run Config wifi\n");
          RunConfigWifi(&akcontext,&config);
       }
-      int recLen = recvfrom(sockfd, recBuf, sizeof(recBuf), MSG_DONTWAIT, (struct sockaddr *)&adr_clnt, (socklen_t*)&len); 
+    /*  int recLen = recvfrom(sockfd, recBuf, sizeof(recBuf), MSG_DONTWAIT, (struct sockaddr *)&adr_clnt, (socklen_t*)&len); 
 
       //printf("recLen = %d\n",recLen);
 
@@ -149,10 +149,10 @@ void AirkissTask::RunTask(void)
             }
          }
       } 
-      UdpBroadcast();
+      UdpBroadcast();*/
    }
    runEndFlag = true;
-   close(sockfd);
+   //close(sockfd);
    usleep(10000);
 }
 
@@ -165,7 +165,7 @@ bool AirkissTask::GetEnterConfigEvent(void)
      return true;
    }
    return false;*/
-
+/*
    static clock_t nowTime = 0;
    static int downCount = 0;   
    if(GetClockMs() - nowTime > 100)
@@ -181,8 +181,8 @@ bool AirkissTask::GetEnterConfigEvent(void)
           return true;
       }  
       nowTime = GetClockMs();
-   }
-   return false;
+   }*/
+   return true;
 }
 
 void AirkissTask::RunConfigWifi(airkiss_context_t* context, const airkiss_config_t* config)
@@ -245,21 +245,21 @@ void AirkissTask::RunConfigWifi(airkiss_context_t* context, const airkiss_config
     }
     //printf("6\n");
 	int ret = wirelessCtrl.GetData(data, 2048);
-	if(ret <= 64)
+	if(ret <= 40)
 	{
         //printf("nodata\n");
 	     continue;
 	}
 	else
 	{
-   /*    printf("len = %d: ",ret);
-	   for(int i = 36 ;i<ret - 36;i++)
+        //printf("len = %d\n",ret - 18);
+	   /*for(int i = 18 ; i < 40 ; i++)
 	    {
-		printf("%02X ",(unsigned char)data[i]);
+		   printf("%02X ",(unsigned char)data[i]);
 	    }
-	    printf("\n");
-*/
-	   ret = airkiss_recv(context,data + 36,ret - 36); // 30
+	    printf("\n");*/
+
+	   ret = airkiss_recv(context,data + 18,ret - 18); // 30
 	   if(ret == AIRKISS_STATUS_CHANNEL_LOCKED)
 	   {
 	      lock = 1;		  
@@ -269,13 +269,13 @@ void AirkissTask::RunConfigWifi(airkiss_context_t* context, const airkiss_config
 	   {
 	      if(airkiss_get_result(context , &ak_result) < 0)
 	      {
-	          printf("airkiss get result fail\n");
-		  break;
+	        printf("airkiss get result fail\n");
+		    break;
 	      }
 	      else
 	      {
-	          printf("result ok!ssid is %s , key is %s\n" , ak_result.ssid , ak_result.pwd);
-		  break;
+	        printf("result ok!ssid is %s , key is %s\n" , ak_result.ssid , ak_result.pwd);
+		    break;
 	      }
 	   }
 	 }
@@ -290,11 +290,19 @@ void AirkissTask::RunConfigWifi(airkiss_context_t* context, const airkiss_config
      usleep(1000);
 
     if(runFlag) 
+    {
         WriteConfigfile(ak_result.ssid,ak_result.pwd,channelIndex + 1); 
+    }
+       
         
     //system("wifi reload");   
-    system("/etc/init.d/network restart");
-    usleep(1000);     
+    //system("/etc/init.d/network restart");
+    system("killall wpa_supplicant");
+    system("killall udhcpc");  
+
+    system("/mnt/mtd/wpa_supplicant -Dwext -iwlan0 -c /mnt/mtd/wpa_supplicant.conf -B");  
+    system("udhcpc -i wlan0 -s /mnt/mtd/default.script");  
+    usleep(1000);    
 
    if(runFlag) 
    {
@@ -341,7 +349,7 @@ int AirkissTask::WriteConfigfile(const char *ssid,const char *pwr,int channel)
    fputs("\toption mode \'sta\'\n",fp);
    fprintf(fp,"\toption key \'%s\'\n\n\n",pwr);
    fclose(fp);*/
-
+/*
    char buff[256];
    system("uci set wireless.@wifi-device[0].disabled=0");  //打开无线  
    system("uci set wireless.@wifi-device[0].txpower=30");    //设置功率为17dbm 太高会烧无线模块  
@@ -354,16 +362,17 @@ int AirkissTask::WriteConfigfile(const char *ssid,const char *pwr,int channel)
    system("uci set wireless.@wifi-iface[0].encryption=psk2");     //设置加密为WPA2-PSK  
    sprintf(buff,"uci set wireless.@wifi-iface[0].key=%s",pwr);
    system(buff);  //设置无线密码  
-   system("uci commit");
+   system("uci commit");*/
 
-/*
-   fp = fopen("/etc/wpa_supplicant.conf","w");
-   fputs("ctrl_interface=/var/run/wpa_supplicant\n\r",fp);
-   fputs("update_config=1\n\r",fp);
 
-   fprintf(fp,"network={\nssid=\"%s\"\nkey_mgmt=WPA-PSK\nproto=WPA\npairwise=TKIP\ngroup=TKIP\npsk=\"%s\"\npriority=1\n}",ssid,pwr);
+   FILE *fp = fopen("/mnt/mtd/wpa_supplicant.conf","w");
+   /*fputs("ctrl_interface=/var/run/wpa_supplicant\n\r",fp);
+   fputs("update_config=1\n\r",fp);*/
+
+   //fprintf(fp,"network={\nssid=\"%s\"\nkey_mgmt=WPA-PSK\nproto=WPA\npairwise=TKIP\ngroup=TKIP\npsk=\"%s\"\npriority=1\n}",ssid,pwr);
+   fprintf(fp,"network={\nssid=\"%s\"\npsk=\"%s\"\n}",ssid,pwr);
    fclose(fp);
-*/
+
    return 0;
 }
 /*
@@ -397,7 +406,7 @@ void AirkissTask::UdpBroadcast(void)
     int enabled = 1;
     int err;
     struct sockaddr_in addr;
-    
+/*    
     if(this->sendTimes <= 0)
        return;
     
@@ -438,6 +447,36 @@ void AirkissTask::UdpBroadcast(void)
        }
        nowTime = GetClockMs();
     }    
+*/
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_BROADCAST;
+    addr.sin_port = htons(10000);
+
+    fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0)
+    {
+        printf("get socket err\n");
+        return;
+    } 
+
+    err = setsockopt(fd, SOL_SOCKET, SO_BROADCAST, (char *) &enabled, sizeof(enabled));
+    if(err == -1)
+    {
+        printf("setsockopt err\n");
+        close(fd);
+        fd = -1;
+        return;
+    }
+
+    printf("Sending random to broadcast..\n");
+     
+    for(int i = 0 ; i < 50 ; i ++)
+    {
+        sendto(fd, (unsigned char *)&this->sendRandom, 1, 0, (struct sockaddr*)&addr, sizeof(struct sockaddr));
+        usleep(20000);
+    }
+   
+    
 
     close(fd);
 /*

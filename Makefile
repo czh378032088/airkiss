@@ -1,13 +1,13 @@
 #if compile x86 demo on unbuntu 64.
 
-DEVICE_NAME:= ar9331
+DEVICE_NAME:= gm8136
 
 ifeq ($(DEVICE_NAME),mt7688)
 CC:= /opt/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.16/bin/mipsel-openwrt-linux-g++  
-else
-  ifeq ($(DEVICE_NAME),ar9331) 
-    CC:= /opt/toolchain-mips_24kc_gcc-5.4.0_musl-1.1.16/bin/mips-openwrt-linux-g++  
-  endif
+else ifeq ($(DEVICE_NAME),ar9331) 
+CC:= /opt/toolchain-mips_24kc_gcc-5.4.0_musl-1.1.16/bin/mips-openwrt-linux-g++  
+else ifeq ($(DEVICE_NAME),gm8136) 
+CC:= ../../workspace/GM8136SDKreleasev2.0/Software/Embedded_Linux/source/arm-linux-3.3/toolchain_gnueabi-4.4.0_ARMv5TE/usr/bin/arm-linux-g++
 endif
 
 export STAGING_DIR:=/staging_dir
@@ -25,7 +25,7 @@ export STAGING_DIR:=/staging_dir
 #	$(CC) airkiss.c -o airkiss -O0 -g3 -I"./include" -L"./lib" -lairkiss_log -lpthread -ldl -lstdc++ -lm -lrt
 
 
-COBJS += main.o gpio.o airkisstask.o json.o device.o wireless.o
+COBJS += main.o airkisstask.o json.o wireless.o
 
 CFLAGS += -O3 -Wall -g3
 INCDIRS	+= -I./ -I./inc
